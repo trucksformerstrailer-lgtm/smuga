@@ -1,0 +1,12 @@
+
+{
+  "name": "smuga-landing",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve -s . -l tcp://0.0.0.0:${PORT:-3000}"
+  },
+  "dependencies": {
+    "serve": "^14.2.5"
+  }
+}
