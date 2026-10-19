@@ -87,6 +87,19 @@ body.reading #reader{display:block}
 .next{margin:34px 0 0;border-top:1px solid var(--rule);padding:22px 0 60px;display:grid;gap:12px}
 .next .prev{font:400 12px var(--f-mono);color:var(--mut);min-height:44px;justify-self:start}
 .end{font:400 13px/1.7 var(--f-mono);color:var(--mut);text-align:center;padding:10px 0}
+
+
+
+.snd{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:20;display:flex;align-items:center;gap:9px;min-height:44px;max-width:calc(100vw - 28px);padding:0 14px;
+ background:rgba(15,20,18,.93);border:1px solid #3b4036;color:var(--mut);font:600 11.5px var(--f-mono);letter-spacing:.05em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.snd[aria-pressed="true"]{color:var(--amber);border-color:var(--amber)}
+.snd span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snd i{display:inline-flex;gap:2px;align-items:flex-end;height:12px;flex:none}
+.snd i b{display:block;width:2px;height:4px;background:currentColor}
+.snd[aria-pressed="true"] i b{animation:eq 1.1s ease-in-out infinite}
+.snd i b:nth-child(2){animation-delay:.25s}.snd i b:nth-child(3){animation-delay:.5s}
+@keyframes eq{0%,100%{height:3px}50%{height:12px}}
+@media (prefers-reduced-motion:reduce){.snd i b{animation:none!important;height:8px}}
 @media (min-width:700px){body{font-size:18px}.hero{padding:52px 0 36px}.art img{object-position:50% 18%}}
 </style>
 </head>
@@ -130,6 +143,7 @@ body.reading #reader{display:block}
   </div>
 </main>
 
+<button class="snd" id="snd" aria-pressed="false" aria-label="Фонова музика"><i aria-hidden="true"><b></b><b></b><b></b></i><span id="sndT">Музика Смуги</span></button>
 <template id="tx1">
 <h3>1</h3>
 <p>Донця вночі не видно, його тільки чути. За дамбою щось хлюпає й перевертається з боку на бік, і так до самого ранку. У плавнях жаби. Від кузні тягне горілим мастилом: Кушнір знову смажить яєчню на старому процесорному кулері, бо, каже, тільки там рівна температура, не те що на ваших плитках. Ользі він обіцяв зав’язати ще в серпні. Обіцяв він це щороку, і щороку Ольга робила вигляд, що вірить, бо П’ятдесятка без Кушнірової яєчні о дев’ятій вечора була б уже якоюсь іншою фортецею.</p>
@@ -1312,6 +1326,40 @@ function countdown(){
   $('count').textContent=m<=1?'Ефір зараз.':'Наступна перекличка за Києвом через '+(h?h+' год ':'')+(m%60)+' хв.';
 }
 countdown();setInterval(countdown,30000);
+
+
+/* Фонова музика: стартовий екран — «Степовий нуар», читання — «Steppe Wind».
+   Тихо, по колу, з плавним перетіканням між екранами. Стартує з першого дотику (так вимагають браузери);
+   кнопкою можна вимкнути — вибір запам'ятовується. */
+(()=>{
+ const TR={home:{src:'smuha-stepovyi-nuar.mp3',t:'Степовий нуар',v:0.22},read:{src:'smuha-steppe-wind.mp3',t:'Steppe Wind',v:0.13}};
+ const B=$('snd'),T=$('sndT'),KEY='smuha-music-off';
+ const P={};for(const k in TR){const a=new Audio();a.preload='none';a.loop=true;a.volume=0;P[k]=a;}
+ let on=false,cur=null,fades={};
+ let off=false;try{off=localStorage.getItem(KEY)==='1'}catch(e){}
+ const mode=()=>document.body.classList.contains('reading')?'read':'home';
+ function ramp(k,to,ms,done){const a=P[k];clearInterval(fades[k]);const from=a.volume,st=Date.now();
+  fades[k]=setInterval(()=>{const f=Math.min(1,(Date.now()-st)/ms),e=f*f*(3-2*f);try{a.volume=Math.max(0,Math.min(1,from+(to-from)*e))}catch(_){}if(f>=1){clearInterval(fades[k]);done&&done()}},40)}
+ function ui(){B.setAttribute('aria-pressed',on);T.textContent=on&&cur?'♪ '+TR[cur].t:'Музика Смуги'}
+ function go(k){
+  if(!on)return;
+  if(cur===k&&!P[k].paused){ramp(k,TR[k].v,1500);return}
+  const prev=cur;cur=k;
+  if(prev&&prev!==k)ramp(prev,0,2500,()=>{if(cur!==prev)P[prev].pause()});
+  const a=P[k];if(!a.src)a.src=TR[k].src;
+  a.play().then(()=>ramp(k,TR[k].v,prev?3500:4000)).catch(()=>{on=false;cur=null;ui()});
+  ui();
+ }
+ function start(){on=true;go(mode())}
+ function stop(){on=false;for(const k in P)ramp(k,0,800,()=>P[k].pause());ui()}
+ for(const k in P)P[k].addEventListener('error',()=>{if(cur===k){T.textContent='Музика недоступна'}});
+ B.onclick=e=>{e.stopPropagation();if(on){stop();off=true}else{off=false;start()}try{localStorage.setItem(KEY,off?'1':'0')}catch(_){}};
+ const first=()=>{['pointerdown','keydown','touchstart'].forEach(t=>removeEventListener(t,first,true));if(!off&&!on)start()};
+ ['pointerdown','keydown','touchstart'].forEach(t=>addEventListener(t,first,true));
+ new MutationObserver(()=>{if(on)go(mode())}).observe(document.body,{attributes:true,attributeFilter:['class']});
+ document.addEventListener('visibilitychange',()=>{if(!on||!cur)return;if(document.hidden)ramp(cur,0,600,()=>P[cur].pause());else go(cur)});
+ ui();
+})();
 renderHome();
 const m0=location.hash.match(/^#([1-8])$/);if(m0)open(+m0[1]-1,true);
 </script>
