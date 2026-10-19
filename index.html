@@ -7,7 +7,11 @@
 <title>Смуга. Двадцять-П'ятдесят</title>
 <meta name="description" content="СМУГА. Двадцять-П’ятдесят — роман Макса Вишневецького у восьми частинах. 2050. Від Дінця до Дону. Перекличка о 20:50.">
 <meta property="og:title" content="СМУГА · Двадцять-П’ятдесят">
-<meta property="og:image" content="smuha-og.jpg">
+<meta property="og:image" content="https://trucksformerstrailer-lgtm.github.io/smuga/smuha-og.jpg">
+<meta property="og:url" content="https://trucksformerstrailer-lgtm.github.io/smuga/">
+<meta property="og:type" content="book">
+<meta name="twitter:image" content="https://trucksformerstrailer-lgtm.github.io/smuga/smuha-og.jpg">
+<link rel="canonical" href="https://trucksformerstrailer-lgtm.github.io/smuga/">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:description" content="2050. Від Дінця до Дону. Перекличка о 20:50. Вхід до Смуги відкрито.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -90,6 +94,15 @@ body.reading #reader{display:block}
 
 
 
+.gate{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center;background:radial-gradient(ellipse at 50% 60%,#14100a 0%,var(--bg) 70%);transition:opacity 1.2s ease}
+.gate.out{opacity:0;pointer-events:none}
+.gate .gk{font:600 11px/1.5 var(--f-mono);letter-spacing:.32em;color:var(--mut);text-transform:uppercase;margin:0}
+.gate .gt{font:400 clamp(56px,18vw,110px)/1 var(--f-poster);color:#ece3cf;margin:0;letter-spacing:.02em}
+.gate .gt b{color:var(--amber);font-weight:400}
+.gate .gin{min-height:52px;padding:0 26px;border:1px solid var(--amber);color:var(--amber);font:600 13px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;background:rgba(227,164,58,.06)}
+.gate .gin:hover,.gate .gin:focus-visible{background:rgba(227,164,58,.14);outline:none}
+.gate .gq{font:400 12px var(--f-mono);color:var(--dim);text-decoration:underline;text-underline-offset:3px;padding:8px}
+.gate .gq:hover{color:var(--mut)}
 .snd{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:20;display:flex;align-items:center;gap:9px;min-height:44px;max-width:calc(100vw - 28px);padding:0 14px;
  background:rgba(15,20,18,.93);border:1px solid #3b4036;color:var(--mut);font:600 11.5px var(--f-mono);letter-spacing:.05em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .snd[aria-pressed="true"]{color:var(--amber);border-color:var(--amber)}
@@ -143,6 +156,7 @@ body.reading #reader{display:block}
   </div>
 </main>
 
+<div class="gate" id="gate" role="dialog" aria-label="Вхід"><p class="gk">Макс Вишневецький · Книга перша</p><p class="gt">СМУГА<br><b>20:50</b></p><button class="gin" id="gin">Увійти до Смуги&nbsp;▶</button><button class="gq" id="gq">увійти без звуку</button></div>
 <button class="snd" id="snd" aria-pressed="false" aria-label="Фонова музика"><i aria-hidden="true"><b></b><b></b><b></b></i><span id="sndT">Музика Смуги</span></button>
 <template id="tx1">
 <h3>1</h3>
@@ -1329,12 +1343,11 @@ countdown();setInterval(countdown,30000);
 
 
 /* Фонова музика: стартовий екран — «Степовий нуар», читання — «Steppe Wind».
-   Тихо, по колу, з плавним перетіканням між екранами. Стартує з першого дотику (так вимагають браузери);
-   кнопкою можна вимкнути — вибір запам'ятовується. */
+   Браузери вмикають звук лише після дії людини, тому на вході є екран «Увійти до Смуги». */
 (()=>{
- const TR={home:{src:'smuha-stepovyi-nuar.mp3',t:'Степовий нуар',v:0.22},read:{src:'smuha-steppe-wind.mp3',t:'Steppe Wind',v:0.13}};
- const B=$('snd'),T=$('sndT'),KEY='smuha-music-off';
- const P={};for(const k in TR){const a=new Audio();a.preload='none';a.loop=true;a.volume=0;P[k]=a;}
+ const TR={home:{src:'smuha-stepovyi-nuar.mp3',t:'Степовий нуар',v:0.24},read:{src:'smuha-steppe-wind.mp3',t:'Steppe Wind',v:0.14}};
+ const B=$('snd'),T=$('sndT'),G=$('gate'),KEY='smuha-music-off';
+ const P={};for(const k in TR){const a=new Audio(TR[k].src);a.preload='auto';a.loop=true;a.volume=0;P[k]=a;}
  let on=false,cur=null,fades={};
  let off=false;try{off=localStorage.getItem(KEY)==='1'}catch(e){}
  const mode=()=>document.body.classList.contains('reading')?'read':'home';
@@ -1346,18 +1359,26 @@ countdown();setInterval(countdown,30000);
   if(cur===k&&!P[k].paused){ramp(k,TR[k].v,1500);return}
   const prev=cur;cur=k;
   if(prev&&prev!==k)ramp(prev,0,2500,()=>{if(cur!==prev)P[prev].pause()});
-  const a=P[k];if(!a.src)a.src=TR[k].src;
-  a.play().then(()=>ramp(k,TR[k].v,prev?3500:4000)).catch(()=>{on=false;cur=null;ui()});
-  ui();
+  const a=P[k];
+  const pr=a.play();ui();
+  return Promise.resolve(pr).then(()=>{ramp(k,TR[k].v,prev?3500:3000);return true}).catch(()=>{on=false;cur=null;ui();return false});
  }
- function start(){on=true;go(mode())}
+ function start(){on=true;return go(mode())}
  function stop(){on=false;for(const k in P)ramp(k,0,800,()=>P[k].pause());ui()}
+ function remember(){try{localStorage.setItem(KEY,off?'1':'0')}catch(_){}}
  for(const k in P)P[k].addEventListener('error',()=>{if(cur===k){T.textContent='Музика недоступна'}});
- B.onclick=e=>{e.stopPropagation();if(on){stop();off=true}else{off=false;start()}try{localStorage.setItem(KEY,off?'1':'0')}catch(_){}};
- const first=()=>{['pointerdown','keydown','touchstart'].forEach(t=>removeEventListener(t,first,true));if(!off&&!on)start()};
- ['pointerdown','keydown','touchstart'].forEach(t=>addEventListener(t,first,true));
+ B.onclick=e=>{e.stopPropagation();if(on){stop();off=true}else{off=false;start()}remember()};
+ function closeGate(){G.classList.add('out');setTimeout(()=>G.remove(),1300);detach()}
+ $('gin').onclick=e=>{e.stopPropagation();off=false;remember();start();closeGate()};
+ $('gq').onclick=e=>{e.stopPropagation();off=true;remember();closeGate()};
+ /* запасний варіант: якщо вхідний екран не показали — старт з першої справжньої дії (click/touchend/keydown дають браузеру дозвіл на звук) */
+ const EV=['click','touchend','keydown'];
+ const first=()=>{if(off||on){detach();return}start().then(ok=>{if(ok)detach()})};
+ function attach(){EV.forEach(t=>addEventListener(t,first,true))}
+ function detach(){EV.forEach(t=>removeEventListener(t,first,true))}
+ if(off){G.remove();}else{attach();}
  new MutationObserver(()=>{if(on)go(mode())}).observe(document.body,{attributes:true,attributeFilter:['class']});
- document.addEventListener('visibilitychange',()=>{if(!on||!cur)return;if(document.hidden)ramp(cur,0,600,()=>P[cur].pause());else go(cur)});
+ document.addEventListener('visibilitychange',()=>{if(!on||!cur)return;if(document.hidden)ramp(cur,0,600,()=>P[cur].pause());else{const k=cur;cur=null;go(k)}});
  ui();
 })();
 renderHome();
